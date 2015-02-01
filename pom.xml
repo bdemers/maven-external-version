@@ -56,4 +56,31 @@
         </dependencies>
     </dependencyManagement>
 
+    <build>
+        <!--<pluginManagement>-->
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.rat</groupId>
+                    <artifactId>apache-rat-plugin</artifactId>
+
+                    <executions>
+                        <execution>
+                            <id>rat-check</id>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <excludes>
+                                    <exclude>DEPENDENCIES</exclude>
+                                    <exclude>**/src/it/**</exclude>
+                                    <exclude>README.md</exclude>
+                                </excludes>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        <!--</pluginManagement>-->
+    </build>
+
 </project>

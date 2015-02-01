@@ -21,6 +21,7 @@ package org.apache.maven.version.strategy;
 
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.component.annotations.Component;
+import org.codehaus.plexus.util.StringUtils;
 
 /**
  * Loads version from the System Property 'external.version'.
@@ -33,15 +34,19 @@ public class SystemPropertyStrategy
 {
     private static final String EXTERNAL_VERSION = "external.version";
 
+    private static final String EXTERNAL_VERSION_QUALIFIER = "external.version-qualifier";
+
     @Override
     public String getVersion( MavenProject mavenProject )
         throws ExternalVersionException
     {
-        String newVersion = System.getProperty( EXTERNAL_VERSION );
+        String newVersion = System.getProperty( EXTERNAL_VERSION, mavenProject.getVersion() );
+        String qualifier = StringUtils.trim( System.getProperty( EXTERNAL_VERSION_QUALIFIER ) );
 
-        if ( newVersion == null )
+        if ( StringUtils.isNotBlank( qualifier ) )
         {
-            throw new ExternalVersionException( "System Property '" + EXTERNAL_VERSION + "' was not set." );
+            // TODO: this needs to be cleaned up, the calling method will re-add the -SNAPSHOT if needed, but this is dirty
+            newVersion = newVersion.replaceFirst( "-SNAPSHOT", "" ) + "-" + qualifier;
         }
 
         return newVersion;

@@ -23,7 +23,10 @@ import org.apache.maven.AbstractMavenLifecycleParticipant;
 import org.apache.maven.MavenExecutionException;
 import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.Model;
 import org.apache.maven.model.Plugin;
+import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
+import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.version.strategy.ExternalVersionException;
 import org.apache.maven.version.strategy.ExternalVersionStrategy;
@@ -36,9 +39,16 @@ import org.codehaus.plexus.component.configurator.expression.DefaultExpressionEv
 import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
 import org.codehaus.plexus.configuration.xml.XmlPlexusConfiguration;
 import org.codehaus.plexus.logging.Logger;
+import org.codehaus.plexus.util.IOUtil;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
+import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
 import java.util.regex.Pattern;
 
 /**
@@ -106,12 +116,51 @@ public class ExternalVersionExtension
                 String newFinalName = oldFinalName.replaceFirst( Pattern.quote( oldVersion ), newVersion );
                 logger.info( "Updating project.build.finalName: " + newFinalName );
                 mavenProject.getBuild().setFinalName( newFinalName );
+
+                // write processed new pom out
+                createNewVersionPom( mavenProject );
+
             }
             catch ( ExternalVersionException e )
             {
                 throw new MavenExecutionException( e.getMessage(), e );
             }
+            catch ( XmlPullParserException e )
+            {
+                throw new MavenExecutionException( e.getMessage(), e );
+            }
+            catch ( IOException e )
+            {
+                throw new MavenExecutionException( e.getMessage(), e );
+            }
         }
+    }
+
+    private void createNewVersionPom( MavenProject mavenProject )
+        throws IOException, XmlPullParserException
+    {
+        Reader fileReader = null;
+        Writer fileWriter = null;
+        try
+        {
+            fileReader = new FileReader( mavenProject.getFile() );
+            Model model = new MavenXpp3Reader().read( fileReader );
+            model.setVersion( mavenProject.getVersion() );
+
+
+            File newPom = new File( mavenProject.getBasedir(), "pom.xml.new-version" );
+            fileWriter = new FileWriter( newPom );
+            new MavenXpp3Writer().write( fileWriter, model );
+
+            mavenProject.setFile( newPom );
+
+        }
+        finally
+        {
+            IOUtil.close( fileReader );
+        }
+
+
     }
 
     private String getNewVersion( ExternalVersionStrategy strategy, MavenProject mavenProject )

@@ -22,15 +22,60 @@ branch/feature name to the version, e.g. for branch `everything`, you want to en
 
 Need to add real example here, when I'm more awake. Until then, look at [this](https://github.com/bdemers/maven-external-version/blob/master/maven-external-version-plugin/src/it/simple-module/pom.xml#L54-L68).
 
+Quick and Dirty Example
+------------------------
+
+
+In your pom add:
+
+```xml
+
+    <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-external-version-plugin</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <extensions>true</extensions>
+        <configuration>
+            <strategy hint="sysprop"/>
+        </configuration>
+    </plugin>
+
+```
+
+To replaced the whole version you can run:
+
+```
+mvn install -Dexternal.version=1.1.42
+```
+
+To add just a qualifier to the version:
+
+```
+mvn install -Dexternal.version-qualifier=rc1
+# if the original version was 1.1.1 the new version would be 1.1.1-rc1
+```
+
+Add a version qualifier to all non-master branches
+
+```
+mvn install -Dexternal.version-qualifier=$(git symbolic-ref --short HEAD| sed s_^master$__)
+```
+
+Or how about a short git hash?
+
+```
+mvn install -Dexternal.version-qualifier=$(git rev-parse --short HEAD)
+```
+
 
 TODO:
 -----
 
-* Test with multi-module
 * Add unit tests (Initial implementation was a bit exploratory hacking, hence why this is temporarily on github)
 * Finalize strategy API
 * Add APT for doc/site
 * find out if anyone else cares about this.
+* filter new versions into MavenProject and model ( potential changes to parent, dependency, and plugin versions)
 
 Other Thoughts
 ---------------
