@@ -20,7 +20,7 @@ For example if your `master` is at version `1.1.42-SNAPSHOT`, and for your featu
 branch/feature name to the version, e.g. for branch `everything`, you want to end up with `1.1.42-everything-SNAPSHOT`
 
 
-Need to add real example here, when I'm more awake.
+Need to add real example here, when I'm more awake. Until then, look at [this](https://github.com/bdemers/maven-external-version/blob/master/maven-external-version-plugin/src/it/simple-module/pom.xml#L54-L68).
 
 
 TODO:
