@@ -75,7 +75,7 @@ TODO:
 * Finalize strategy API
 * Add APT for doc/site
 * find out if anyone else cares about this.
-* filter new versions into MavenProject and model ( potential changes to parent, dependency, and plugin versions)
+* filter new versions into MavenProject and model ( dependency, dependency management, plugin, etc)
 
 Other Thoughts
 ---------------

@@ -49,6 +49,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
@@ -89,6 +91,8 @@ public class ExternalVersionExtension
     {
         logger.info( "About to change project version in reactor." );
 
+        Map<String, String> gavVersionMap = new HashMap<String, String>();
+
         for ( MavenProject mavenProject : session.getAllProjects() )
         {
             // Lookup this plugin's configuration
@@ -117,13 +121,46 @@ public class ExternalVersionExtension
                 logger.info( "Updating project.build.finalName: " + newFinalName );
                 mavenProject.getBuild().setFinalName( newFinalName );
 
-                // write processed new pom out
-                createNewVersionPom( mavenProject );
+                gavVersionMap.put( buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(), oldVersion ),
+                                   newVersion );
+                logger.info(
+                    "new version added to map: " + buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(),
+                                                                oldVersion ) + ": " + newVersion );
+
+                if ( mavenProject.getParent() != null )
+                {
+                    logger.info( "My parent is: " + buildGavKey( mavenProject.getParent() ) );
+                }
+
 
             }
             catch ( ExternalVersionException e )
             {
                 throw new MavenExecutionException( e.getMessage(), e );
+            }
+        }
+
+        // now we have only updated the versions of the projects, we need to update
+        // the references between the updated projects
+
+        for ( MavenProject mavenProject : session.getAllProjects() )
+        {
+            try
+            {
+
+                if ( mavenProject.getParent() != null )
+                {
+                    logger.info( "looking for parent in map" );
+
+                    if ( gavVersionMap.containsKey( buildGavKey( mavenProject.getParent() ) ) )
+                    {
+                        // we need to update the parent
+                        logger.info( "WE NEED TO ACT NOW!" );
+                    }
+                }
+
+                // write processed new pom out
+                createNewVersionPom( mavenProject, gavVersionMap );
             }
             catch ( XmlPullParserException e )
             {
@@ -133,10 +170,28 @@ public class ExternalVersionExtension
             {
                 throw new MavenExecutionException( e.getMessage(), e );
             }
+
         }
+
     }
 
-    private void createNewVersionPom( MavenProject mavenProject )
+    private String buildGavKey( MavenProject mavenProject )
+    {
+        return buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(), mavenProject.getVersion() );
+    }
+
+    private String buildGavKey( MavenProject mavenProject, String oldVersion )
+    {
+        return buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(), oldVersion );
+    }
+
+    private String buildGavKey( String groupId, String artifactId, String oldVersion )
+    {
+        return new StringBuilder( groupId ).append( ":" ).append( artifactId ).append( ":" ).append(
+            oldVersion ).toString();
+    }
+
+    private void createNewVersionPom( MavenProject mavenProject, Map<String, String> gavVersionMap )
         throws IOException, XmlPullParserException
     {
         Reader fileReader = null;
@@ -148,6 +203,18 @@ public class ExternalVersionExtension
             model.setVersion( mavenProject.getVersion() );
 
 
+            // TODO: this needs to be restructured when other references are updated (dependencies, dep-management, plugins, etc)
+            if ( model.getParent() != null )
+            {
+                String key = buildGavKey( model.getParent().getGroupId(), model.getParent().getArtifactId(),
+                                          model.getParent().getVersion() );
+                String newVersionForParent = gavVersionMap.get( key );
+                if ( newVersionForParent != null )
+                {
+                    model.getParent().setVersion( newVersionForParent );
+                }
+            }
+
             File newPom = new File( mavenProject.getBasedir(), "pom.xml.new-version" );
             fileWriter = new FileWriter( newPom );
             new MavenXpp3Writer().write( fileWriter, model );
@@ -158,6 +225,7 @@ public class ExternalVersionExtension
         finally
         {
             IOUtil.close( fileReader );
+            IOUtil.close( fileWriter );
         }
 
 
