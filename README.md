@@ -1,6 +1,8 @@
 Maven External Version
 -----------------------
 
+Requires Maven 3.2.0 or later.
+
 (github is the temporary home.)
 
 What is this?
