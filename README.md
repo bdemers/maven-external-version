@@ -90,6 +90,8 @@ Configuration & parameters
   - file: read the version from the first line of a given file
   - script: version is given by the first line of the output execution of a given command
   - sysprop: allows to define project version & qualifier from system properties
+- `deleteTemporaryFile` will the generated pom files created by this extension will be deleted after execution. Set this parameter to _true_ to activate automatic deletion. Value is optional and defaults to _false_ 
+- `generateTemporaryFile` if _true_ generated pom files will be created as temporary files inside the directory pointed by system property `java.io.tmpdir`. If omitted it defaults to  _false_. When false, a file called `pom.xml.new-version` will be generated in the root project directory. 
   
 ## Strategy : file
 
