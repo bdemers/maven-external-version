@@ -67,6 +67,104 @@ Or how about a short git hash?
 mvn install -Dexternal.version-qualifier=$(git rev-parse --short HEAD)
 ```
 
+Configuration & parameters
+-----
+
+```xml
+
+    <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-external-version-plugin</artifactId>
+        <version>X.Y.Z</version>
+        <extensions>true</extensions>
+        <configuration>
+            <strategy hint="STRATEGY"/>
+            <generateTemporaryFile>true/false</generateTemporaryFile>
+            <deleteTemporaryFile>true/false</deleteTemporaryFile>
+        </configuration>
+    </plugin>
+
+```
+
+- `strategy#hint` key defining which strategy implementation will be used, one of
+  - file: read the version from the first line of a given file
+  - script: version is given by the first line of the output execution of a given command
+  - sysprop: allows to define project version & qualifier from system properties
+  
+## Strategy : file
+
+This strategy reads the first line of a given file to extract the version to use. 
+
+### Usage
+
+```xml
+
+    <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-external-version-plugin</artifactId>
+        <version>X.Y.Z</version>
+        <extensions>true</extensions>
+        <configuration>
+            <strategy hint="file">
+                <versionFilePath>SOME_FILE</versionFilePath>
+            </strategy>
+        </configuration>
+    </plugin>
+
+```
+
+### Parameters
+
+- `versionFilePath`: denotes the file which first line will be read to extract the version from. Can be a fully qualified path or a path relative to the project directory. The parameter is optional, it defaults to `VERSION`, meaning that if not provided, a file called `VERSION` will be read from the project root. 
+
+## Strategy : script
+
+This strategy allows to execute a given command ; the first line of stdout output will be used as version. 
+
+### Usage
+
+```xml
+
+    <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-external-version-plugin</artifactId>
+        <version>X.Y.Z</version>
+        <extensions>true</extensions>
+        <configuration>
+            <strategy hint="script">
+                <script>SOME_COMMAND</script>
+            </strategy>
+        </configuration>
+    </plugin>
+
+```
+
+### Parameters
+
+- `script`: a command to execute. The parameter is optional and defaults to `./version.sh`, meaning that if not provided a file called `version.sh` in the project root will be executed. 
+
+## Strategy : sysprop
+
+This strategy uses 2 system properties to define the new project version:
+
+- `external.version`: the main version to use. If omitted, then it defaults to the current `project.version`.
+- `external.version-qualifier`: an optional qualifier that will be appended to the given version
+
+### Usage
+
+``` xml
+
+    <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-external-version-plugin</artifactId>
+        <version>X.Y.Z</version>
+        <extensions>true</extensions>
+        <configuration>
+            <strategy hint="sysprop" />
+        </configuration>
+    </plugin>
+
+```
 
 TODO:
 -----
