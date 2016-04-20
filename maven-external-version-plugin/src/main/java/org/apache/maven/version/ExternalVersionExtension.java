@@ -214,13 +214,17 @@ public class ExternalVersionExtension
                     model.getParent().setVersion( newVersionForParent );
                 }
             }
-
-            File newPom = new File( mavenProject.getBasedir(), "pom.xml.new-version" );
+            
+            Plugin plugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-external-version-plugin" );
+            // now we are going to wedge in the config
+            Xpp3Dom pluginConfiguration = (Xpp3Dom) plugin.getConfiguration();
+            
+            File newPom = createFileFromConfiguration( mavenProject, pluginConfiguration ); 
+            logger.debug( ExternalVersionExtension.class.getSimpleName() + ": using new pom file => " + newPom );
             fileWriter = new FileWriter( newPom );
             new MavenXpp3Writer().write( fileWriter, model );
 
             mavenProject.setFile( newPom );
-
         }
         finally
         {
@@ -229,6 +233,50 @@ public class ExternalVersionExtension
         }
 
 
+    }
+
+    private File createFileFromConfiguration( MavenProject mavenProject, Xpp3Dom pluginConfig ) throws IOException
+    {
+        boolean deleteTemporaryFile = shouldDeleteTemporaryFile( pluginConfig ); 
+        boolean generateTemporaryFile = shouldGenerateTemporaryFile( pluginConfig ); 
+
+        // let's keep the default file as a default
+        File f = new File( mavenProject.getBasedir(), "pom.xml.new-version" );
+        
+        if ( generateTemporaryFile ) 
+        {
+            f = File.createTempFile( "pom", ".maven-external-version" );
+        }
+        
+        if ( deleteTemporaryFile ) 
+        {
+            f.deleteOnExit();
+        }
+        return f;
+    }
+
+    /*
+     * Looks for generateTemporaryFile child configuration node.
+     * If not present then no deletion occurs, otherwise return true if value is true, false otherwise
+     */
+    private boolean shouldGenerateTemporaryFile( Xpp3Dom pluginConfiguration ) 
+    {
+        return evaluateBooleanNodeInConfiguration( pluginConfiguration, "generateTemporaryFile" );
+    }
+
+    /*
+     * Looks for deleteTemporaryFile child configuration node.
+     * If not present then no deletion occurs, otherwise return true if value is true, false otherwise
+     */
+    private boolean shouldDeleteTemporaryFile( Xpp3Dom pluginConfiguration ) 
+    {
+        return evaluateBooleanNodeInConfiguration( pluginConfiguration, "deleteTemporaryFile" );
+    }
+
+    private boolean evaluateBooleanNodeInConfiguration( Xpp3Dom pluginConfiguration, String nodeName )
+    {
+        Xpp3Dom n = pluginConfiguration.getChild( nodeName );
+        return n != null && Boolean.parseBoolean( n.getValue() );
     }
 
     private String getNewVersion( ExternalVersionStrategy strategy, MavenProject mavenProject )

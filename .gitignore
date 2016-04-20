@@ -1,2 +1,7 @@
 .idea
 **/pom.xml.new-version
+.project
+.classpath
+.settings/
+target/
+**/.checkstyle

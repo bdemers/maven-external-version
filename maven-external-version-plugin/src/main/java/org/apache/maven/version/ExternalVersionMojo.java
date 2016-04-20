@@ -42,6 +42,12 @@ public class ExternalVersionMojo
 
     @Parameter( property = "strategy", required = true )
     private String strategy;
+    
+    @Parameter( property = "external-version.deleteTemporaryFile" , defaultValue = "false" )
+    private Boolean deleteTemporaryFile;
+    
+    @Parameter( property = "external-version.generateTemporaryFile" , defaultValue = "false" )
+    private Boolean generateTemporaryFile;
 
     @Override
     public void execute()
