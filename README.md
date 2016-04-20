@@ -1,6 +1,8 @@
 Maven External Version
 -----------------------
 
+Requires Maven 3.2.0 or later.
+
 (github is the temporary home.)
 
 What is this?
@@ -58,7 +60,7 @@ mvn install -Dexternal.version-qualifier=rc1
 Add a version qualifier to all non-master branches
 
 ```
-mvn install -Dexternal.version-qualifier=$(git symbolic-ref --short HEAD| sed s_^master$__)
+mvn install -Dexternal.version-qualifier=$(git symbolic-ref --short HEAD| sed s_^master\$__)
 ```
 
 Or how about a short git hash?
