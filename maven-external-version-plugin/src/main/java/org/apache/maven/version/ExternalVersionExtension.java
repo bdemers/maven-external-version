@@ -49,8 +49,12 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.regex.Pattern;
 
 /**
@@ -105,24 +109,22 @@ public class ExternalVersionExtension
 
             // grab the old version before changing it
             String oldVersion = mavenProject.getVersion();
-
             try
             {
                 // now use the strategy to figure out the new version
                 String newVersion = getNewVersion( strategy, mavenProject );
-
                 // now that we have the new version update the project.
                 mavenProject.setVersion( newVersion );
+                
                 mavenProject.getArtifact().setVersion( newVersion );
-
                 // TODO: get the unfiltered string, and re-filter it with new version.
                 String oldFinalName = mavenProject.getBuild().getFinalName();
                 String newFinalName = oldFinalName.replaceFirst( Pattern.quote( oldVersion ), newVersion );
                 logger.info( "Updating project.build.finalName: " + newFinalName );
                 mavenProject.getBuild().setFinalName( newFinalName );
-
                 gavVersionMap.put( buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(), oldVersion ),
                                    newVersion );
+               
                 logger.info(
                     "new version added to map: " + buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(),
                                                                 oldVersion ) + ": " + newVersion );
@@ -204,27 +206,35 @@ public class ExternalVersionExtension
 
 
             // TODO: this needs to be restructured when other references are updated (dependencies, dep-management, plugins, etc)
-            if ( model.getParent() != null )
+            if ( model.getParent() != null && ! "parent".equalsIgnoreCase( model.getParent().getArtifactId() ) )
             {
-                String key = buildGavKey( model.getParent().getGroupId(), model.getParent().getArtifactId(),
-                                          model.getParent().getVersion() );
-                String newVersionForParent = gavVersionMap.get( key );
-                if ( newVersionForParent != null )
-                {
-                    model.getParent().setVersion( newVersionForParent );
-                }
+                 model.getParent().setVersion( mavenProject.getVersion() );
             }
             
             Plugin plugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-external-version-plugin" );
             // now we are going to wedge in the config
             Xpp3Dom pluginConfiguration = (Xpp3Dom) plugin.getConfiguration();
+            List<String> propertiesToUpdate = listOfPropertiesToChange( pluginConfiguration ) ;
+            Properties properties =  mavenProject.getProperties();
             
+            Enumeration<?> e = properties.propertyNames();
+
+            while ( e.hasMoreElements() ) 
+            {
+              String key = (String) e.nextElement();
+              if ( propertiesToUpdate.contains( key ) )
+              {
+                  properties.put( key, mavenProject.getVersion() );
+              }
+           }
+
             File newPom = createFileFromConfiguration( mavenProject, pluginConfiguration ); 
             logger.debug( ExternalVersionExtension.class.getSimpleName() + ": using new pom file => " + newPom );
             fileWriter = new FileWriter( newPom );
             new MavenXpp3Writer().write( fileWriter, model );
 
             mavenProject.setFile( newPom );
+            
         }
         finally
         {
@@ -234,6 +244,22 @@ public class ExternalVersionExtension
 
 
     }
+    
+    private List<String> listOfPropertiesToChange( Xpp3Dom pluginConfiguration )
+    {
+        List<String> propertyNames = new ArrayList<String>();
+        Xpp3Dom values = pluginConfiguration.getChild( "propertiesToReplace" );
+        Xpp3Dom property[] = values.getChildren();        
+        if ( null != property && property.length > 0 )
+        {
+            for ( Xpp3Dom xpp3Dom : property ) 
+            {
+                propertyNames.add( xpp3Dom.getValue() );
+            }
+        }
+        return propertyNames;
+    }
+    
 
     private File createFileFromConfiguration( MavenProject mavenProject, Xpp3Dom pluginConfig ) throws IOException
     {

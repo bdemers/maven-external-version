@@ -49,6 +49,9 @@ public class ExternalVersionMojo
     @Parameter( property = "external-version.generateTemporaryFile" , defaultValue = "false" )
     private Boolean generateTemporaryFile;
 
+    @Parameter( property = "external-version.propertiesToReplace" , defaultValue = "" )
+    private String propertiesToReplace;
+    
     @Override
     public void execute()
         throws MojoExecutionException, MojoFailureException
