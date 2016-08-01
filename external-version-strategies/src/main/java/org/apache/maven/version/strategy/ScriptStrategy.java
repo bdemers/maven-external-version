@@ -50,7 +50,8 @@ public class ScriptStrategy
     public String getVersion( MavenProject mavenProject )
         throws ExternalVersionException
     {
-        ProcessBuilder ps = new ProcessBuilder( script );
+        String mainVersion = mavenProject.getVersion().split( "-" )[0];
+        ProcessBuilder ps = new ProcessBuilder( "bash", "-c" , script );
         ps.redirectErrorStream( true );
         BufferedReader reader = null;
         try
@@ -67,7 +68,7 @@ public class ScriptStrategy
                 log.error( "Execution Exit Code: " + pr.exitValue() );
                 throw new ExternalVersionException( "The script exit status: " + pr.exitValue() );
             }
-            return versionString;
+            return mainVersion + "-" + versionString;
         }
         catch ( IOException e )
         {
