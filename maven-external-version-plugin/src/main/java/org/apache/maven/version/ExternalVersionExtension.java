@@ -239,7 +239,7 @@ public class ExternalVersionExtension
             fileWriter = new FileWriter( newPom );
             new MavenXpp3Writer().write( fileWriter, model );
 
-            mavenProject.setPomFile(  newPom );
+            mavenProject.setFile( newPom );
             List<Dependency> dependencies = mavenProject.getDependencies();
             logger.debug( " Before updating the dependency " + mavenProject.getArtifactId() + " : " 
             + mavenProject.getDependencies() );
