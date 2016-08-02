@@ -126,7 +126,7 @@ public class ExternalVersionExtension
                 gavVersionMap.put( buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(), oldVersion ),
                                    newVersion );
                
-                logger.info(
+                logger.debug(
                     "new version added to map: " + buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(),
                                                                 oldVersion ) + ": " + newVersion );
 
