@@ -23,6 +23,7 @@ import org.apache.maven.AbstractMavenLifecycleParticipant;
 import org.apache.maven.MavenExecutionException;
 import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
@@ -181,6 +182,11 @@ public class ExternalVersionExtension
     {
         return buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(), mavenProject.getVersion() );
     }
+    
+    private String buildGavKey( Dependency dependency )
+    {
+        return buildGavKey( dependency.getGroupId(), dependency.getArtifactId(), dependency.getVersion() );
+    }
 
     private String buildGavKey( MavenProject mavenProject, String oldVersion )
     {
@@ -215,7 +221,7 @@ public class ExternalVersionExtension
             // now we are going to wedge in the config
             Xpp3Dom pluginConfiguration = (Xpp3Dom) plugin.getConfiguration();
             List<String> propertiesToUpdate = listOfPropertiesToChange( pluginConfiguration ) ;
-            Properties properties =  mavenProject.getProperties();
+            Properties properties =  model.getProperties();
             
             Enumeration<?> e = properties.propertyNames();
 
@@ -233,8 +239,20 @@ public class ExternalVersionExtension
             fileWriter = new FileWriter( newPom );
             new MavenXpp3Writer().write( fileWriter, model );
 
-            mavenProject.setFile( newPom );
-            
+            mavenProject.setPomFile(  newPom );
+            List<Dependency> dependencies = mavenProject.getDependencies();
+            logger.debug( " Before updating the dependency " + mavenProject.getArtifactId() + " : " 
+            + mavenProject.getDependencies() );
+            for ( Dependency dependency : dependencies ) 
+            {
+                String buildGavKey = buildGavKey( dependency );
+                if ( gavVersionMap.containsKey( buildGavKey  ) )
+                {
+                    dependency.setVersion( gavVersionMap.get( buildGavKey ) );
+                }
+            }
+            logger.debug( " Updated the dependency " + mavenProject.getArtifactId() + " : " 
+            + mavenProject.getDependencies() );
         }
         finally
         {
