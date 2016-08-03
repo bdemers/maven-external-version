@@ -26,6 +26,7 @@ import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Plugin;
+import org.apache.maven.model.PluginExecution;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.apache.maven.project.MavenProject;
@@ -103,8 +104,6 @@ public class ExternalVersionExtension
             // Lookup this plugin's configuration
             Plugin plugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-external-version-plugin" );
 
-            
-            
             // now we are going to wedge in the config
             Xpp3Dom configDom = (Xpp3Dom) plugin.getConfiguration();
 
@@ -120,7 +119,7 @@ public class ExternalVersionExtension
                 mavenProject.setVersion( newVersion );
                 
                 mavenProject.getArtifact().setVersion( newVersion );
-                
+                updateInstallPlugin( mavenProject, oldVersion, newVersion );
                 updateDependencyPlugin( mavenProject, oldVersion, newVersion );
                 
                 // TODO: get the unfiltered string, and re-filter it with new version.
@@ -210,27 +209,59 @@ public class ExternalVersionExtension
         Plugin dependencyPlugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-dependency-plugin" );
         if ( null != dependencyPlugin && !dependencyPlugin.getExecutions().isEmpty() )
         {
-            if ( dependencyPlugin.getExecutions().get( 0 ).getConfiguration() instanceof Xpp3Dom )
+            List<PluginExecution> executions = dependencyPlugin.getExecutions();
+            for ( PluginExecution pluginExecution : executions ) 
             {
-                Xpp3Dom dom = (Xpp3Dom) dependencyPlugin.getExecutions().get( 0 ).getConfiguration();
-                Xpp3Dom artifactItems = dom.getChild( "artifactItems" );
-                if ( artifactItems.getChildCount() > 0 )
+                if ( null != pluginExecution.getConfiguration() 
+                    && pluginExecution.getConfiguration() instanceof Xpp3Dom )
                 {
+                    Xpp3Dom dom = (Xpp3Dom) executions.get( 0 ).getConfiguration();
+                    Xpp3Dom artifactItems = dom.getChild( "artifactItems" );
                     if ( artifactItems.getChildCount() > 0 )
                     {
-                        for ( int i = 0; i < artifactItems.getChildCount(); i++ ) 
+                        if ( artifactItems.getChildCount() > 0 )
                         {
-                            if ( artifactItems.getChild( i ).getChild( "version" ).
-                                getValue().equalsIgnoreCase( oldVersion ) )
+                            for ( int i = 0; i < artifactItems.getChildCount(); i++ ) 
                             {
-                                artifactItems.getChild( i ).getChild( "version" ).setValue( newVersion );
+                                if ( artifactItems.getChild( i ).getChild( "version" ).
+                                    getValue().equalsIgnoreCase( oldVersion ) )
+                                {
+                                    artifactItems.getChild( i ).getChild( "version" ).setValue( newVersion );
+                                }
                             }
                         }
                     }
+                    
                 }
-                
             }
-            
+        }
+    }
+    
+    
+    private void updateInstallPlugin( MavenProject mavenProject, String oldVersion, String newVersion ) 
+    {
+        Plugin installPlugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-install-plugin" );
+        if ( null != installPlugin && !installPlugin.getExecutions().isEmpty() )
+        {
+            List<PluginExecution> executions = installPlugin.getExecutions();
+            for ( PluginExecution pluginExecution : executions ) 
+            {
+                Object configuration = pluginExecution.getConfiguration();
+                if ( configuration instanceof Xpp3Dom )
+                {
+                    Xpp3Dom dom = (Xpp3Dom) configuration;
+                    Xpp3Dom version = dom.getChild( "version" );
+                    if ( null != version &&  version.getValue().equalsIgnoreCase( oldVersion ) )
+                    {
+                        version.setValue( newVersion );
+                    }
+                    Xpp3Dom file = dom.getChild( "file" );
+                    if ( null != version &&  file.getValue().contains(  oldVersion ) )
+                    {
+                        file.setValue( file.getValue().replaceAll( oldVersion, newVersion ) );
+                    }
+                }
+            }
         }
     }
 
