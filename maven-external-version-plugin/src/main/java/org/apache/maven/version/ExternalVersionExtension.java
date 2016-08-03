@@ -129,12 +129,14 @@ public class ExternalVersionExtension
                     String newFinalName = oldFinalName.replaceFirst( Pattern.quote( oldVersion ), newVersion );
                     logger.info( "Updating project.build.finalName: " + newFinalName );
                     mavenProject.getBuild().setFinalName( newFinalName );
-                    gavVersionMap.put( buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(), oldVersion ),
+                    gavVersionMap.put( 
+                        buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(), oldVersion ),
                                        newVersion );
                    
                     updateDependencyArtifacts( gavVersionMap, mavenProject, oldVersion, newVersion );
                     logger.debug(
-                        "new version added to map: " + buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(),
+                        "new version added to map: " 
+                    + buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(),
                                                                     oldVersion ) + ": " + newVersion );
     
                     if ( mavenProject.getParent() != null )
