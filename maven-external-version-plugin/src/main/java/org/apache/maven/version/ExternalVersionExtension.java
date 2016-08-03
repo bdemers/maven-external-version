@@ -103,6 +103,8 @@ public class ExternalVersionExtension
             // Lookup this plugin's configuration
             Plugin plugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-external-version-plugin" );
 
+            
+            
             // now we are going to wedge in the config
             Xpp3Dom configDom = (Xpp3Dom) plugin.getConfiguration();
 
@@ -118,6 +120,9 @@ public class ExternalVersionExtension
                 mavenProject.setVersion( newVersion );
                 
                 mavenProject.getArtifact().setVersion( newVersion );
+                
+                updateDependencyPlugin( mavenProject, oldVersion, newVersion );
+                
                 // TODO: get the unfiltered string, and re-filter it with new version.
                 String oldFinalName = mavenProject.getBuild().getFinalName();
                 String newFinalName = oldFinalName.replaceFirst( Pattern.quote( oldVersion ), newVersion );
@@ -126,6 +131,7 @@ public class ExternalVersionExtension
                 gavVersionMap.put( buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(), oldVersion ),
                                    newVersion );
                
+                updateDependencyArtifacts( gavVersionMap, mavenProject, oldVersion, newVersion );
                 logger.debug(
                     "new version added to map: " + buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(),
                                                                 oldVersion ) + ": " + newVersion );
@@ -173,9 +179,59 @@ public class ExternalVersionExtension
             {
                 throw new MavenExecutionException( e.getMessage(), e );
             }
-
+            
         }
 
+    }
+
+    private void updateDependencyArtifacts( Map<String, String> gavVersionMap, MavenProject mavenProject, 
+        String oldVersion, String newVersion ) 
+    {
+        if ( ! mavenProject.getArtifactId().equalsIgnoreCase( "parent" ) )
+        {
+            List<Dependency> dependencies = mavenProject.getDependencies();
+            logger.debug( " Before updating the GAV " + mavenProject.getArtifactId() + " : " 
+            + mavenProject.getDependencies() );
+            for ( Dependency dependency : dependencies ) 
+            {
+                String buildGavKey = buildGavKey( dependency );
+                if ( !gavVersionMap.containsKey( buildGavKey  ) 
+                    && ! dependency.getArtifactId().equalsIgnoreCase( "parent" ) 
+                    && dependency.getVersion().equalsIgnoreCase( oldVersion ) )
+                {
+                    gavVersionMap.put( buildGavKey, newVersion );
+                }
+            }
+        }
+    }
+
+    private void updateDependencyPlugin( MavenProject mavenProject, String oldVersion, String newVersion ) 
+    {
+        Plugin dependencyPlugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-dependency-plugin" );
+        if ( null != dependencyPlugin && !dependencyPlugin.getExecutions().isEmpty() )
+        {
+            if ( dependencyPlugin.getExecutions().get( 0 ).getConfiguration() instanceof Xpp3Dom )
+            {
+                Xpp3Dom dom = (Xpp3Dom) dependencyPlugin.getExecutions().get( 0 ).getConfiguration();
+                Xpp3Dom artifactItems = dom.getChild( "artifactItems" );
+                if ( artifactItems.getChildCount() > 0 )
+                {
+                    if ( artifactItems.getChildCount() > 0 )
+                    {
+                        for ( int i = 0; i < artifactItems.getChildCount(); i++ ) 
+                        {
+                            if ( artifactItems.getChild( i ).getChild( "version" ).
+                                getValue().equalsIgnoreCase( oldVersion ) )
+                            {
+                                artifactItems.getChild( i ).getChild( "version" ).setValue( newVersion );
+                            }
+                        }
+                    }
+                }
+                
+            }
+            
+        }
     }
 
     private String buildGavKey( MavenProject mavenProject )
