@@ -101,84 +101,87 @@ public class ExternalVersionExtension
 
         for ( MavenProject mavenProject : session.getAllProjects() )
         {
-            // Lookup this plugin's configuration
-            Plugin plugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-external-version-plugin" );
-
-            // now we are going to wedge in the config
-            Xpp3Dom configDom = (Xpp3Dom) plugin.getConfiguration();
-
-            ExternalVersionStrategy strategy = getStrategy( configDom, mavenProject.getFile() );
-
-            // grab the old version before changing it
-            String oldVersion = mavenProject.getVersion();
-            try
-            {
-                // now use the strategy to figure out the new version
-                String newVersion = getNewVersion( strategy, mavenProject );
-                // now that we have the new version update the project.
-                mavenProject.setVersion( newVersion );
-                
-                mavenProject.getArtifact().setVersion( newVersion );
-                updateInstallPlugin( mavenProject, oldVersion, newVersion );
-                updateDependencyPlugin( mavenProject, oldVersion, newVersion );
-                
-                // TODO: get the unfiltered string, and re-filter it with new version.
-                String oldFinalName = mavenProject.getBuild().getFinalName();
-                String newFinalName = oldFinalName.replaceFirst( Pattern.quote( oldVersion ), newVersion );
-                logger.info( "Updating project.build.finalName: " + newFinalName );
-                mavenProject.getBuild().setFinalName( newFinalName );
-                gavVersionMap.put( buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(), oldVersion ),
-                                   newVersion );
-               
-                updateDependencyArtifacts( gavVersionMap, mavenProject, oldVersion, newVersion );
-                logger.debug(
-                    "new version added to map: " + buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(),
-                                                                oldVersion ) + ": " + newVersion );
-
-                if ( mavenProject.getParent() != null )
+            if ( !mavenProject.getArtifactId().equalsIgnoreCase( "parent" ) )
                 {
-                    logger.info( "My parent is: " + buildGavKey( mavenProject.getParent() ) );
-                }
-
-
-            }
-            catch ( ExternalVersionException e )
-            {
-                throw new MavenExecutionException( e.getMessage(), e );
-            }
-        }
-
-        // now we have only updated the versions of the projects, we need to update
-        // the references between the updated projects
-
-        for ( MavenProject mavenProject : session.getAllProjects() )
-        {
-            try
-            {
-
-                if ( mavenProject.getParent() != null )
+                // Lookup this plugin's configuration
+                Plugin plugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-external-version-plugin" );
+    
+                // now we are going to wedge in the config
+                Xpp3Dom configDom = (Xpp3Dom) plugin.getConfiguration();
+    
+                ExternalVersionStrategy strategy = getStrategy( configDom, mavenProject.getFile() );
+    
+                // grab the old version before changing it
+                String oldVersion = mavenProject.getVersion();
+                try
                 {
-                    logger.info( "looking for parent in map" );
-
-                    if ( gavVersionMap.containsKey( buildGavKey( mavenProject.getParent() ) ) )
+                    // now use the strategy to figure out the new version
+                    String newVersion = getNewVersion( strategy, mavenProject );
+                    // now that we have the new version update the project.
+                    mavenProject.setVersion( newVersion );
+                    
+                    mavenProject.getArtifact().setVersion( newVersion );
+                    updateInstallPlugin( mavenProject, oldVersion, newVersion );
+                    updateDependencyPlugin( mavenProject, oldVersion, newVersion );
+                    
+                    // TODO: get the unfiltered string, and re-filter it with new version.
+                    String oldFinalName = mavenProject.getBuild().getFinalName();
+                    String newFinalName = oldFinalName.replaceFirst( Pattern.quote( oldVersion ), newVersion );
+                    logger.info( "Updating project.build.finalName: " + newFinalName );
+                    mavenProject.getBuild().setFinalName( newFinalName );
+                    gavVersionMap.put( buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(), oldVersion ),
+                                       newVersion );
+                   
+                    updateDependencyArtifacts( gavVersionMap, mavenProject, oldVersion, newVersion );
+                    logger.debug(
+                        "new version added to map: " + buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(),
+                                                                    oldVersion ) + ": " + newVersion );
+    
+                    if ( mavenProject.getParent() != null )
                     {
-                        // we need to update the parent
-                        logger.info( "WE NEED TO ACT NOW!" );
+                        logger.info( "My parent is: " + buildGavKey( mavenProject.getParent() ) );
                     }
+    
+    
                 }
-
-                // write processed new pom out
-                createNewVersionPom( mavenProject, gavVersionMap );
+                catch ( ExternalVersionException e )
+                {
+                    throw new MavenExecutionException( e.getMessage(), e );
+                }
             }
-            catch ( XmlPullParserException e )
+    
+            // now we have only updated the versions of the projects, we need to update
+            // the references between the updated projects
+    
+            for ( MavenProject mavenProject : session.getAllProjects() )
             {
-                throw new MavenExecutionException( e.getMessage(), e );
+                try
+                {
+    
+                    if ( mavenProject.getParent() != null )
+                    {
+                        logger.info( "looking for parent in map" );
+    
+                        if ( gavVersionMap.containsKey( buildGavKey( mavenProject.getParent() ) ) )
+                        {
+                            // we need to update the parent
+                            logger.info( "WE NEED TO ACT NOW!" );
+                        }
+                    }
+    
+                    // write processed new pom out
+                    createNewVersionPom( mavenProject, gavVersionMap );
+                }
+                catch ( XmlPullParserException e )
+                {
+                    throw new MavenExecutionException( e.getMessage(), e );
+                }
+                catch ( IOException e )
+                {
+                    throw new MavenExecutionException( e.getMessage(), e );
+                }
+                
             }
-            catch ( IOException e )
-            {
-                throw new MavenExecutionException( e.getMessage(), e );
-            }
-            
         }
 
     }
