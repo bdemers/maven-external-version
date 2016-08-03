@@ -102,7 +102,7 @@ public class ExternalVersionExtension
         for ( MavenProject mavenProject : session.getAllProjects() )
         {
             if ( !mavenProject.getArtifactId().equalsIgnoreCase( "parent" ) )
-                {
+            {
                 // Lookup this plugin's configuration
                 Plugin plugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-external-version-plugin" );
     
@@ -149,11 +149,14 @@ public class ExternalVersionExtension
                     throw new MavenExecutionException( e.getMessage(), e );
                 }
             }
-    
-            // now we have only updated the versions of the projects, we need to update
-            // the references between the updated projects
-    
-            for ( MavenProject mavenProject : session.getAllProjects() )
+        }
+
+        // now we have only updated the versions of the projects, we need to update
+        // the references between the updated projects
+
+        for ( MavenProject mavenProject : session.getAllProjects() )
+        {
+            if ( !mavenProject.getArtifactId().equalsIgnoreCase( "parent" ) )
             {
                 try
                 {
@@ -180,7 +183,6 @@ public class ExternalVersionExtension
                 {
                     throw new MavenExecutionException( e.getMessage(), e );
                 }
-                
             }
         }
 
