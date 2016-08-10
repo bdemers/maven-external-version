@@ -51,6 +51,9 @@ public class ExternalVersionMojo
 
     @Parameter( property = "external-version.propertiesToReplace" , defaultValue = "" )
     private String propertiesToReplace;
+
+    @Parameter( property = "external-version.artifactIdToExclude" , defaultValue = "" )
+    private String artifactIdToExclude;
     
     @Override
     public void execute()

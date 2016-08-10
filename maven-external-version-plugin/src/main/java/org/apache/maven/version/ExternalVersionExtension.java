@@ -90,6 +90,8 @@ public class ExternalVersionExtension
 
     @Requirement
     private PlexusContainer container;
+    
+    private List<String> artifactsToExclude = new ArrayList<String>();
 
     @Override
     public void afterProjectsRead( MavenSession session )
@@ -101,14 +103,18 @@ public class ExternalVersionExtension
 
         for ( MavenProject mavenProject : session.getAllProjects() )
         {
-            if ( !mavenProject.getArtifactId().equalsIgnoreCase( "parent" ) )
+            if ( !artifactsToExclude.contains( mavenProject.getArtifactId() ) )
             {
                 // Lookup this plugin's configuration
                 Plugin plugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-external-version-plugin" );
-    
+
+                
                 // now we are going to wedge in the config
                 Xpp3Dom configDom = (Xpp3Dom) plugin.getConfiguration();
     
+                artifactsToExclude = listOfArtifactsToExclude( configDom );
+
+                    
                 ExternalVersionStrategy strategy = getStrategy( configDom, mavenProject.getFile() );
     
                 // grab the old version before changing it
@@ -158,7 +164,7 @@ public class ExternalVersionExtension
 
         for ( MavenProject mavenProject : session.getAllProjects() )
         {
-            if ( !mavenProject.getArtifactId().equalsIgnoreCase( "parent" ) )
+            if ( ! artifactsToExclude.contains( mavenProject.getArtifactId() ) )
             {
                 try
                 {
@@ -193,7 +199,7 @@ public class ExternalVersionExtension
     private void updateDependencyArtifacts( Map<String, String> gavVersionMap, MavenProject mavenProject, 
         String oldVersion, String newVersion ) 
     {
-        if ( ! mavenProject.getArtifactId().equalsIgnoreCase( "parent" ) )
+        if ( ! artifactsToExclude.contains(  mavenProject.getArtifactId() ) )
         {
             List<Dependency> dependencies = mavenProject.getDependencies();
             logger.debug( " Before updating the GAV " + mavenProject.getArtifactId() + " : " 
@@ -202,7 +208,7 @@ public class ExternalVersionExtension
             {
                 String buildGavKey = buildGavKey( dependency );
                 if ( !gavVersionMap.containsKey( buildGavKey  ) 
-                    && ! dependency.getArtifactId().equalsIgnoreCase( "parent" ) 
+                    && ! artifactsToExclude.contains( dependency.getArtifactId() )
                     && dependency.getVersion().equalsIgnoreCase( oldVersion ) )
                 {
                     gavVersionMap.put( buildGavKey, newVersion );
@@ -306,7 +312,7 @@ public class ExternalVersionExtension
 
 
             // TODO: this needs to be restructured when other references are updated (dependencies, dep-management, plugins, etc)
-            if ( model.getParent() != null && ! "parent".equalsIgnoreCase( model.getParent().getArtifactId() ) )
+            if ( model.getParent() != null && ! artifactsToExclude.contains( model.getParent().getArtifactId() ) )
             {
                  model.getParent().setVersion( mavenProject.getVersion() );
             }
@@ -370,6 +376,24 @@ public class ExternalVersionExtension
             }
         }
         return propertyNames;
+    }
+    
+    private List<String> listOfArtifactsToExclude( Xpp3Dom pluginConfiguration )
+    {
+        List<String> listOfArtifactsToExclude = new ArrayList<String>();
+        Xpp3Dom values = pluginConfiguration.getChild( "artifactIdToExclude" );
+        if ( null != values )
+        {
+            String property[] = values.getValue().split( "," );        
+            if ( null != property && property.length > 0 )
+            {
+                for ( String xpp3Dom : property ) 
+                {
+                    listOfArtifactsToExclude.add( xpp3Dom );
+                }
+            }
+        }
+        return listOfArtifactsToExclude;
     }
     
 
