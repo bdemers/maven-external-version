@@ -25,6 +25,7 @@ import org.codehaus.plexus.component.annotations.Configuration;
 import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.logging.Logger;
 import org.codehaus.plexus.util.IOUtil;
+import org.codehaus.plexus.util.StringUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -68,7 +69,18 @@ public class ScriptStrategy
                 log.error( "Execution Exit Code: " + pr.exitValue() );
                 throw new ExternalVersionException( "The script exit status: " + pr.exitValue() );
             }
-            return mainVersion + "-" + versionString;
+
+
+            String resultVersion = null;
+            if ( StringUtils.isNotEmpty( versionString ) )
+            {
+                resultVersion = mainVersion;
+            }
+            else
+            {
+                resultVersion = mainVersion + "-" + versionString;
+            }
+            return resultVersion;
         }
         catch ( IOException e )
         {
