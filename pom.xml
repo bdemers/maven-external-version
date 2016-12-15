@@ -22,7 +22,7 @@
 
 	<groupId>org.apache.maven.version</groupId>
 	<artifactId>maven-external-version</artifactId>
-	<version>0.1.2-SNAPSHOT</version>
+	<version>0.1.3-SNAPSHOT</version>
 
 	<packaging>pom</packaging>
 

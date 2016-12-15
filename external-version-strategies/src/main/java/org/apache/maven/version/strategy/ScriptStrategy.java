@@ -74,11 +74,11 @@ public class ScriptStrategy
             String resultVersion = null;
             if ( StringUtils.isNotEmpty( versionString ) )
             {
-                resultVersion = mainVersion;
+                resultVersion = mainVersion + "-" + versionString;
             }
             else
             {
-                resultVersion = mainVersion + "-" + versionString;
+                resultVersion = mainVersion;
             }
             return resultVersion;
         }
