@@ -23,8 +23,10 @@ import org.apache.maven.AbstractMavenLifecycleParticipant;
 import org.apache.maven.MavenExecutionException;
 import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Plugin;
+import org.apache.maven.model.PluginExecution;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.apache.maven.project.MavenProject;
@@ -49,8 +51,12 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.regex.Pattern;
 
 /**
@@ -84,6 +90,8 @@ public class ExternalVersionExtension
 
     @Requirement
     private PlexusContainer container;
+    
+    private List<String> artifactsToExclude = new ArrayList<String>();
 
     @Override
     public void afterProjectsRead( MavenSession session )
@@ -95,48 +103,59 @@ public class ExternalVersionExtension
 
         for ( MavenProject mavenProject : session.getAllProjects() )
         {
-            // Lookup this plugin's configuration
-            Plugin plugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-external-version-plugin" );
-
-            // now we are going to wedge in the config
-            Xpp3Dom configDom = (Xpp3Dom) plugin.getConfiguration();
-
-            ExternalVersionStrategy strategy = getStrategy( configDom, mavenProject.getFile() );
-
-            // grab the old version before changing it
-            String oldVersion = mavenProject.getVersion();
-
-            try
+            if ( !artifactsToExclude.contains( mavenProject.getArtifactId() ) )
             {
-                // now use the strategy to figure out the new version
-                String newVersion = getNewVersion( strategy, mavenProject );
+                // Lookup this plugin's configuration
+                Plugin plugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-external-version-plugin" );
 
-                // now that we have the new version update the project.
-                mavenProject.setVersion( newVersion );
-                mavenProject.getArtifact().setVersion( newVersion );
+                
+                // now we are going to wedge in the config
+                Xpp3Dom configDom = (Xpp3Dom) plugin.getConfiguration();
+    
+                artifactsToExclude = listOfArtifactsToExclude( configDom );
 
-                // TODO: get the unfiltered string, and re-filter it with new version.
-                String oldFinalName = mavenProject.getBuild().getFinalName();
-                String newFinalName = oldFinalName.replaceFirst( Pattern.quote( oldVersion ), newVersion );
-                logger.info( "Updating project.build.finalName: " + newFinalName );
-                mavenProject.getBuild().setFinalName( newFinalName );
-
-                gavVersionMap.put( buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(), oldVersion ),
-                                   newVersion );
-                logger.info(
-                    "new version added to map: " + buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(),
-                                                                oldVersion ) + ": " + newVersion );
-
-                if ( mavenProject.getParent() != null )
+                    
+                ExternalVersionStrategy strategy = getStrategy( configDom, mavenProject.getFile() );
+    
+                // grab the old version before changing it
+                String oldVersion = mavenProject.getVersion();
+                try
                 {
-                    logger.info( "My parent is: " + buildGavKey( mavenProject.getParent() ) );
+                    // now use the strategy to figure out the new version
+                    String newVersion = getNewVersion( strategy, mavenProject );
+                    // now that we have the new version update the project.
+                    mavenProject.setVersion( newVersion );
+                    
+                    mavenProject.getArtifact().setVersion( newVersion );
+                    updateInstallPlugin( mavenProject, oldVersion, newVersion );
+                    updateDependencyPlugin( mavenProject, oldVersion, newVersion );
+                    
+                    // TODO: get the unfiltered string, and re-filter it with new version.
+                    String oldFinalName = mavenProject.getBuild().getFinalName();
+                    String newFinalName = oldFinalName.replaceFirst( Pattern.quote( oldVersion ), newVersion );
+                    logger.info( "Updating project.build.finalName: " + newFinalName );
+                    mavenProject.getBuild().setFinalName( newFinalName );
+                    gavVersionMap.put( 
+                        buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(), oldVersion ),
+                                       newVersion );
+                   
+                    updateDependencyArtifacts( gavVersionMap, mavenProject, oldVersion, newVersion );
+                    logger.debug(
+                        "new version added to map: " 
+                    + buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(),
+                                                                    oldVersion ) + ": " + newVersion );
+    
+                    if ( mavenProject.getParent() != null )
+                    {
+                        logger.info( "My parent is: " + buildGavKey( mavenProject.getParent() ) );
+                    }
+    
+    
                 }
-
-
-            }
-            catch ( ExternalVersionException e )
-            {
-                throw new MavenExecutionException( e.getMessage(), e );
+                catch ( ExternalVersionException e )
+                {
+                    throw new MavenExecutionException( e.getMessage(), e );
+                }
             }
         }
 
@@ -145,39 +164,128 @@ public class ExternalVersionExtension
 
         for ( MavenProject mavenProject : session.getAllProjects() )
         {
-            try
+            if ( ! artifactsToExclude.contains( mavenProject.getArtifactId() ) )
             {
-
-                if ( mavenProject.getParent() != null )
+                try
                 {
-                    logger.info( "looking for parent in map" );
-
-                    if ( gavVersionMap.containsKey( buildGavKey( mavenProject.getParent() ) ) )
+    
+                    if ( mavenProject.getParent() != null )
                     {
-                        // we need to update the parent
-                        logger.info( "WE NEED TO ACT NOW!" );
+                        logger.info( "looking for parent in map" );
+    
+                        if ( gavVersionMap.containsKey( buildGavKey( mavenProject.getParent() ) ) )
+                        {
+                            // we need to update the parent
+                            logger.info( "WE NEED TO ACT NOW!" );
+                        }
                     }
+    
+                    // write processed new pom out
+                    createNewVersionPom( mavenProject, gavVersionMap );
                 }
-
-                // write processed new pom out
-                createNewVersionPom( mavenProject, gavVersionMap );
+                catch ( XmlPullParserException e )
+                {
+                    throw new MavenExecutionException( e.getMessage(), e );
+                }
+                catch ( IOException e )
+                {
+                    throw new MavenExecutionException( e.getMessage(), e );
+                }
             }
-            catch ( XmlPullParserException e )
-            {
-                throw new MavenExecutionException( e.getMessage(), e );
-            }
-            catch ( IOException e )
-            {
-                throw new MavenExecutionException( e.getMessage(), e );
-            }
-
         }
 
+    }
+
+    private void updateDependencyArtifacts( Map<String, String> gavVersionMap, MavenProject mavenProject, 
+        String oldVersion, String newVersion ) 
+    {
+        if ( ! artifactsToExclude.contains(  mavenProject.getArtifactId() ) )
+        {
+            List<Dependency> dependencies = mavenProject.getDependencies();
+            logger.debug( " Before updating the GAV " + mavenProject.getArtifactId() + " : " 
+            + mavenProject.getDependencies() );
+            for ( Dependency dependency : dependencies ) 
+            {
+                String buildGavKey = buildGavKey( dependency );
+                if ( !gavVersionMap.containsKey( buildGavKey  ) 
+                    && ! artifactsToExclude.contains( dependency.getArtifactId() )
+                    && dependency.getVersion().equalsIgnoreCase( oldVersion ) )
+                {
+                    gavVersionMap.put( buildGavKey, newVersion );
+                }
+            }
+        }
+    }
+
+    private void updateDependencyPlugin( MavenProject mavenProject, String oldVersion, String newVersion ) 
+    {
+        Plugin dependencyPlugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-dependency-plugin" );
+        if ( null != dependencyPlugin && !dependencyPlugin.getExecutions().isEmpty() )
+        {
+            List<PluginExecution> executions = dependencyPlugin.getExecutions();
+            for ( PluginExecution pluginExecution : executions ) 
+            {
+                if ( null != pluginExecution.getConfiguration() 
+                    && pluginExecution.getConfiguration() instanceof Xpp3Dom )
+                {
+                    Xpp3Dom dom = (Xpp3Dom) executions.get( 0 ).getConfiguration();
+                    Xpp3Dom artifactItems = dom.getChild( "artifactItems" );
+                    if ( artifactItems.getChildCount() > 0 )
+                    {
+                        if ( artifactItems.getChildCount() > 0 )
+                        {
+                            for ( int i = 0; i < artifactItems.getChildCount(); i++ ) 
+                            {
+                                if ( artifactItems.getChild( i ).getChild( "version" ).
+                                    getValue().equalsIgnoreCase( oldVersion ) )
+                                {
+                                    artifactItems.getChild( i ).getChild( "version" ).setValue( newVersion );
+                                }
+                            }
+                        }
+                    }
+                    
+                }
+            }
+        }
+    }
+    
+    
+    private void updateInstallPlugin( MavenProject mavenProject, String oldVersion, String newVersion ) 
+    {
+        Plugin installPlugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-install-plugin" );
+        if ( null != installPlugin && !installPlugin.getExecutions().isEmpty() )
+        {
+            List<PluginExecution> executions = installPlugin.getExecutions();
+            for ( PluginExecution pluginExecution : executions ) 
+            {
+                Object configuration = pluginExecution.getConfiguration();
+                if ( configuration instanceof Xpp3Dom )
+                {
+                    Xpp3Dom dom = (Xpp3Dom) configuration;
+                    Xpp3Dom version = dom.getChild( "version" );
+                    if ( null != version &&  version.getValue().equalsIgnoreCase( oldVersion ) )
+                    {
+                        version.setValue( newVersion );
+                    }
+                    Xpp3Dom file = dom.getChild( "file" );
+                    if ( null != version &&  file.getValue().contains(  oldVersion ) )
+                    {
+                        file.setValue( file.getValue().replaceAll( oldVersion, newVersion ) );
+                    }
+                }
+            }
+        }
     }
 
     private String buildGavKey( MavenProject mavenProject )
     {
         return buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(), mavenProject.getVersion() );
+    }
+    
+    private String buildGavKey( Dependency dependency )
+    {
+        return buildGavKey( dependency.getGroupId(), dependency.getArtifactId(), dependency.getVersion() );
     }
 
     private String buildGavKey( MavenProject mavenProject, String oldVersion )
@@ -204,27 +312,47 @@ public class ExternalVersionExtension
 
 
             // TODO: this needs to be restructured when other references are updated (dependencies, dep-management, plugins, etc)
-            if ( model.getParent() != null )
+            if ( model.getParent() != null && ! artifactsToExclude.contains( model.getParent().getArtifactId() ) )
             {
-                String key = buildGavKey( model.getParent().getGroupId(), model.getParent().getArtifactId(),
-                                          model.getParent().getVersion() );
-                String newVersionForParent = gavVersionMap.get( key );
-                if ( newVersionForParent != null )
-                {
-                    model.getParent().setVersion( newVersionForParent );
-                }
+                 model.getParent().setVersion( mavenProject.getVersion() );
             }
             
             Plugin plugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-external-version-plugin" );
             // now we are going to wedge in the config
             Xpp3Dom pluginConfiguration = (Xpp3Dom) plugin.getConfiguration();
+            List<String> propertiesToUpdate = listOfPropertiesToChange( pluginConfiguration ) ;
+            Properties properties =  model.getProperties();
             
+            Enumeration<?> e = properties.propertyNames();
+
+            while ( e.hasMoreElements() ) 
+            {
+              String key = (String) e.nextElement();
+              if ( propertiesToUpdate.contains( key ) )
+              {
+                  properties.put( key, mavenProject.getVersion() );
+              }
+           }
+
             File newPom = createFileFromConfiguration( mavenProject, pluginConfiguration ); 
             logger.debug( ExternalVersionExtension.class.getSimpleName() + ": using new pom file => " + newPom );
             fileWriter = new FileWriter( newPom );
             new MavenXpp3Writer().write( fileWriter, model );
 
             mavenProject.setFile( newPom );
+            List<Dependency> dependencies = mavenProject.getDependencies();
+            logger.debug( " Before updating the dependency " + mavenProject.getArtifactId() + " : " 
+            + mavenProject.getDependencies() );
+            for ( Dependency dependency : dependencies ) 
+            {
+                String buildGavKey = buildGavKey( dependency );
+                if ( gavVersionMap.containsKey( buildGavKey  ) )
+                {
+                    dependency.setVersion( gavVersionMap.get( buildGavKey ) );
+                }
+            }
+            logger.debug( " Updated the dependency " + mavenProject.getArtifactId() + " : " 
+            + mavenProject.getDependencies() );
         }
         finally
         {
@@ -234,6 +362,40 @@ public class ExternalVersionExtension
 
 
     }
+    
+    private List<String> listOfPropertiesToChange( Xpp3Dom pluginConfiguration )
+    {
+        List<String> propertyNames = new ArrayList<String>();
+        Xpp3Dom values = pluginConfiguration.getChild( "propertiesToReplace" );
+        Xpp3Dom property[] = values.getChildren();        
+        if ( null != property && property.length > 0 )
+        {
+            for ( Xpp3Dom xpp3Dom : property ) 
+            {
+                propertyNames.add( xpp3Dom.getValue() );
+            }
+        }
+        return propertyNames;
+    }
+    
+    private List<String> listOfArtifactsToExclude( Xpp3Dom pluginConfiguration )
+    {
+        List<String> listOfArtifactsToExclude = new ArrayList<String>();
+        Xpp3Dom values = pluginConfiguration.getChild( "artifactIdToExclude" );
+        if ( null != values )
+        {
+            String property[] = values.getValue().split( "," );        
+            if ( null != property && property.length > 0 )
+            {
+                for ( String xpp3Dom : property ) 
+                {
+                    listOfArtifactsToExclude.add( xpp3Dom );
+                }
+            }
+        }
+        return listOfArtifactsToExclude;
+    }
+    
 
     private File createFileFromConfiguration( MavenProject mavenProject, Xpp3Dom pluginConfig ) throws IOException
     {
