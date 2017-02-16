@@ -73,7 +73,6 @@
 			<plugin>
 				<groupId>org.apache.rat</groupId>
 				<artifactId>apache-rat-plugin</artifactId>
-
 				<executions>
 					<execution>
 						<id>rat-check</id>
@@ -81,6 +80,7 @@
 							<goal>check</goal>
 						</goals>
 						<configuration>
+							<skip>true</skip>
 							<excludes>
 								<exclude>.checkstyle</exclude>
 								<exclude>DEPENDENCIES</exclude>
