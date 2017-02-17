@@ -129,7 +129,7 @@ public class ExternalVersionExtension
                     mavenProject.getArtifact().setVersion( newVersion );
                     updateInstallPlugin( mavenProject, oldVersion, newVersion );
                     updateDependencyPlugin( mavenProject, oldVersion, newVersion );
-                    
+                    updateDeployPlugin( mavenProject, oldVersion, newVersion );
                     // TODO: get the unfiltered string, and re-filter it with new version.
                     String oldFinalName = mavenProject.getBuild().getFinalName();
                     String newFinalName = oldFinalName.replaceFirst( Pattern.quote( oldVersion ), newVersion );
@@ -228,7 +228,7 @@ public class ExternalVersionExtension
                 if ( null != pluginExecution.getConfiguration() 
                     && pluginExecution.getConfiguration() instanceof Xpp3Dom )
                 {
-                    Xpp3Dom dom = (Xpp3Dom) executions.get( 0 ).getConfiguration();
+                    Xpp3Dom dom = (Xpp3Dom) pluginExecution.getConfiguration();
                     Xpp3Dom artifactItems = dom.getChild( "artifactItems" );
                     if ( artifactItems.getChildCount() > 0 )
                     {
@@ -250,6 +250,41 @@ public class ExternalVersionExtension
         }
     }
     
+    private void updateDeployPlugin( MavenProject mavenProject, String oldVersion, String newVersion ) 
+    {
+        Plugin deployPlugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-deploy-plugin" );
+        if ( null != deployPlugin )
+        {
+            List<PluginExecution> executions = deployPlugin.getExecutions();
+            for ( PluginExecution pluginExecution : executions ) 
+            {
+                if ( null != pluginExecution.getConfiguration() 
+                    && pluginExecution.getConfiguration() instanceof Xpp3Dom )
+                {
+                    Xpp3Dom dom = (Xpp3Dom) pluginExecution.getConfiguration();
+                    if ( null != dom.getChild( "version" ) )
+                    {
+                        if ( dom.getChild( "version" ).getValue().equalsIgnoreCase( oldVersion ) )
+                        {
+                            dom.getChild( "version" ).setValue( newVersion );
+                        }
+                    }
+                }
+            }
+            if ( null != deployPlugin.getConfiguration() 
+                && deployPlugin.getConfiguration() instanceof Xpp3Dom )
+            {
+                Xpp3Dom dom = (Xpp3Dom) deployPlugin.getConfiguration();
+                if ( null != dom.getChild( "version" ) )
+                {
+                    if ( dom.getChild( "version" ).getValue().equalsIgnoreCase( oldVersion ) )
+                    {
+                        dom.getChild( "version" ).setValue( newVersion );
+                    }
+                }
+            }
+        }
+    }
     
     private void updateInstallPlugin( MavenProject mavenProject, String oldVersion, String newVersion ) 
     {
