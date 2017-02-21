@@ -55,6 +55,13 @@ public class ExternalVersionMojo
     @Parameter( property = "external-version.artifactIdToExclude" , defaultValue = "" )
     private String artifactIdToExclude;
     
+    @Parameter( property = "external-version.parentArtifacts" , defaultValue = "" )
+    private String parentArtifacts;
+    
+    @Parameter( property = "external-version.parentRepoPresent" , defaultValue = "true" )
+    private Boolean parentRepoPresent;
+    
+    
     @Override
     public void execute()
         throws MojoExecutionException, MojoFailureException

@@ -92,6 +92,11 @@ public class ExternalVersionExtension
     private PlexusContainer container;
     
     private List<String> artifactsToExclude = new ArrayList<String>();
+    
+    private List<String> parentArtifacts = new ArrayList<String>();
+
+    private boolean parentRepoPresent = true;
+
 
     @Override
     public void afterProjectsRead( MavenSession session )
@@ -111,10 +116,32 @@ public class ExternalVersionExtension
                 
                 // now we are going to wedge in the config
                 Xpp3Dom configDom = (Xpp3Dom) plugin.getConfiguration();
-    
+                
+                if ( session.getUserProperties().containsKey( "external-version.parentRepoPresent" ) )
+                {
+                    parentRepoPresent = Boolean.valueOf( 
+                        session.getUserProperties().get( "external-version.parentRepoPresent" ).toString() );
+                }
+                else
+                {
+                    parentRepoPresent = isParentRepoPresent( configDom );
+                }
+                
+                
                 artifactsToExclude = listOfArtifactsToExclude( configDom );
+                parentArtifacts = listOfParentArtifacts( configDom );
 
-                    
+                System.out.println( " got the setting artifactsToExclude   " + artifactsToExclude );
+                System.out.println( " got the setting parentRepoPresent   " + parentRepoPresent );
+                System.out.println( " got the setting parentArtifacts   " + parentArtifacts );
+                
+                if ( !parentRepoPresent )
+                {
+                    artifactsToExclude.addAll( parentArtifacts );
+                }
+
+                System.out.println( " got the setting artifactsToExclude   " + artifactsToExclude );
+
                 ExternalVersionStrategy strategy = getStrategy( configDom, mavenProject.getFile() );
     
                 // grab the old version before changing it
@@ -360,6 +387,9 @@ public class ExternalVersionExtension
             Model model = new MavenXpp3Reader().read( fileReader );
             model.setVersion( mavenProject.getVersion() );
 
+            Plugin plugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-external-version-plugin" );
+            // now we are going to wedge in the config
+            Xpp3Dom pluginConfiguration = (Xpp3Dom) plugin.getConfiguration();
 
             // TODO: this needs to be restructured when other references are updated (dependencies, dep-management, plugins, etc)
             if ( model.getParent() != null && ! artifactsToExclude.contains( 
@@ -368,9 +398,6 @@ public class ExternalVersionExtension
                  model.getParent().setVersion( mavenProject.getVersion() );
             }
             
-            Plugin plugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-external-version-plugin" );
-            // now we are going to wedge in the config
-            Xpp3Dom pluginConfiguration = (Xpp3Dom) plugin.getConfiguration();
             List<String> propertiesToUpdate = listOfPropertiesToChange( pluginConfiguration ) ;
             Properties properties =  model.getProperties();
             
@@ -447,6 +474,23 @@ public class ExternalVersionExtension
         return listOfArtifactsToExclude;
     }
     
+    private List<String> listOfParentArtifacts( Xpp3Dom pluginConfiguration )
+    {
+        List<String> listOfArtifacts = new ArrayList<String>();
+        Xpp3Dom values = pluginConfiguration.getChild( "parentArtifacts" );
+        if ( null != values )
+        {
+            String property[] = values.getValue().split( "," );        
+            if ( null != property && property.length > 0 )
+            {
+                for ( String xpp3Dom : property ) 
+                {
+                    listOfArtifacts.add( xpp3Dom );
+                }
+            }
+        }
+        return listOfArtifacts;
+    }
 
     private File createFileFromConfiguration( MavenProject mavenProject, Xpp3Dom pluginConfig ) throws IOException
     {
@@ -486,6 +530,13 @@ public class ExternalVersionExtension
         return evaluateBooleanNodeInConfiguration( pluginConfiguration, "deleteTemporaryFile" );
     }
 
+    private boolean isParentRepoPresent( Xpp3Dom pluginConfiguration ) 
+    {
+        Xpp3Dom n = pluginConfiguration.getChild( "parentRepoPresent" );
+        return n == null || Boolean.parseBoolean( n.getValue() );
+    }
+
+    
     private boolean evaluateBooleanNodeInConfiguration( Xpp3Dom pluginConfiguration, String nodeName )
     {
         Xpp3Dom n = pluginConfiguration.getChild( nodeName );
