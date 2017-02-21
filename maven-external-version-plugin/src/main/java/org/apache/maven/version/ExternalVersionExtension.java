@@ -131,16 +131,16 @@ public class ExternalVersionExtension
                 artifactsToExclude = listOfArtifactsToExclude( configDom );
                 parentArtifacts = listOfParentArtifacts( configDom );
 
-                System.out.println( " got the setting artifactsToExclude   " + artifactsToExclude );
-                System.out.println( " got the setting parentRepoPresent   " + parentRepoPresent );
-                System.out.println( " got the setting parentArtifacts   " + parentArtifacts );
+                logger.info( "Got the setting artifactsToExclude:   " + artifactsToExclude );
+                logger.info( "Got the setting parentRepoPresent:   " + parentRepoPresent );
+                logger.info( "Got the setting parentArtifacts:   " + parentArtifacts );
                 
                 if ( !parentRepoPresent )
                 {
                     artifactsToExclude.addAll( parentArtifacts );
                 }
 
-                System.out.println( " got the setting artifactsToExclude   " + artifactsToExclude );
+                logger.info( "Updated artifactsToExclude:   " + artifactsToExclude );
 
                 ExternalVersionStrategy strategy = getStrategy( configDom, mavenProject.getFile() );
     
@@ -399,6 +399,19 @@ public class ExternalVersionExtension
             }
             
             List<String> propertiesToUpdate = listOfPropertiesToChange( pluginConfiguration ) ;
+            
+            logger.info( "Got the propertiesToUpdate:   " + propertiesToUpdate );
+
+            List<String>  parentProperties = listOfParentProperties( pluginConfiguration ) ;
+            logger.info( "Got the parentProperties:   " + parentProperties );
+            
+            if ( !parentRepoPresent )
+            {
+                propertiesToUpdate.removeAll( parentProperties );
+            }
+            
+            logger.info( "Final propertiesToUpdate:   " + propertiesToUpdate );
+
             Properties properties =  model.getProperties();
             
             Enumeration<?> e = properties.propertyNames();
@@ -445,29 +458,51 @@ public class ExternalVersionExtension
     {
         List<String> propertyNames = new ArrayList<String>();
         Xpp3Dom values = pluginConfiguration.getChild( "propertiesToReplace" );
-        Xpp3Dom property[] = values.getChildren();        
-        if ( null != property && property.length > 0 )
+        if ( null != values ) 
         {
-            for ( Xpp3Dom xpp3Dom : property ) 
+            Xpp3Dom property[] = values.getChildren();        
+            if ( null != property && property.length > 0 )
             {
-                propertyNames.add( xpp3Dom.getValue() );
+                for ( Xpp3Dom xpp3Dom : property ) 
+                {
+                    propertyNames.add( xpp3Dom.getValue() );
+                }
             }
         }
         return propertyNames;
     }
     
+    private List<String> listOfParentProperties( Xpp3Dom pluginConfiguration )
+    {
+        List<String> propertyNames = new ArrayList<String>();
+        Xpp3Dom values = pluginConfiguration.getChild( "parentProperties" );
+        if ( null != values ) 
+        {
+            Xpp3Dom property[] = values.getChildren();        
+            if ( null != property && property.length > 0 )
+            {
+                for ( Xpp3Dom xpp3Dom : property ) 
+                {
+                    propertyNames.add( xpp3Dom.getValue() );
+                }
+            }
+        }
+        return propertyNames;
+    }
+    
+    
     private List<String> listOfArtifactsToExclude( Xpp3Dom pluginConfiguration )
     {
         List<String> listOfArtifactsToExclude = new ArrayList<String>();
         Xpp3Dom values = pluginConfiguration.getChild( "artifactIdToExclude" );
-        if ( null != values )
+        if ( null != values ) 
         {
-            String property[] = values.getValue().split( "," );        
+            Xpp3Dom property[] = values.getChildren();        
             if ( null != property && property.length > 0 )
             {
-                for ( String xpp3Dom : property ) 
+                for ( Xpp3Dom xpp3Dom : property ) 
                 {
-                    listOfArtifactsToExclude.add( xpp3Dom );
+                    listOfArtifactsToExclude.add( xpp3Dom.getValue() );
                 }
             }
         }
@@ -478,14 +513,14 @@ public class ExternalVersionExtension
     {
         List<String> listOfArtifacts = new ArrayList<String>();
         Xpp3Dom values = pluginConfiguration.getChild( "parentArtifacts" );
-        if ( null != values )
+        if ( null != values ) 
         {
-            String property[] = values.getValue().split( "," );        
+            Xpp3Dom property[] = values.getChildren();        
             if ( null != property && property.length > 0 )
             {
-                for ( String xpp3Dom : property ) 
+                for ( Xpp3Dom xpp3Dom : property ) 
                 {
-                    listOfArtifacts.add( xpp3Dom );
+                    listOfArtifacts.add( xpp3Dom.getValue() );
                 }
             }
         }

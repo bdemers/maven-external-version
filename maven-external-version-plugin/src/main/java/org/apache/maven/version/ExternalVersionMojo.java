@@ -61,6 +61,8 @@ public class ExternalVersionMojo
     @Parameter( property = "external-version.parentRepoPresent" , defaultValue = "true" )
     private Boolean parentRepoPresent;
     
+    @Parameter( property = "external-version.parentProperties" , defaultValue = "" )
+    private String parentProperties;
     
     @Override
     public void execute()
