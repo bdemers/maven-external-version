@@ -103,7 +103,7 @@ public class ExternalVersionExtension
 
         for ( MavenProject mavenProject : session.getAllProjects() )
         {
-            if ( !artifactsToExclude.contains( mavenProject.getArtifactId() ) )
+            if ( !artifactsToExclude.contains( buildArtifactKey( mavenProject ) ) )
             {
                 // Lookup this plugin's configuration
                 Plugin plugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-external-version-plugin" );
@@ -199,7 +199,7 @@ public class ExternalVersionExtension
     private void updateDependencyArtifacts( Map<String, String> gavVersionMap, MavenProject mavenProject, 
         String oldVersion, String newVersion ) 
     {
-        if ( ! artifactsToExclude.contains(  mavenProject.getArtifactId() ) )
+        if ( ! artifactsToExclude.contains( buildArtifactKey( mavenProject ) ) )
         {
             List<Dependency> dependencies = mavenProject.getDependencies();
             logger.debug( " Before updating the GAV " + mavenProject.getArtifactId() + " : " 
@@ -208,7 +208,7 @@ public class ExternalVersionExtension
             {
                 String buildGavKey = buildGavKey( dependency );
                 if ( !gavVersionMap.containsKey( buildGavKey  ) 
-                    && ! artifactsToExclude.contains( dependency.getArtifactId() )
+                    && ! artifactsToExclude.contains( buildArtifactKey( dependency ) )
                     && dependency.getVersion().equalsIgnoreCase( oldVersion ) )
                 {
                     gavVersionMap.put( buildGavKey, newVersion );
@@ -236,10 +236,14 @@ public class ExternalVersionExtension
                         {
                             for ( int i = 0; i < artifactItems.getChildCount(); i++ ) 
                             {
-                                if ( artifactItems.getChild( i ).getChild( "version" ).
+                                Xpp3Dom childArtifact = artifactItems.getChild( i );
+                                String artifactId = buildArtifactKey( childArtifact.getChild( "groupId" ).
+                                    getValue(), childArtifact.getChild( "artifactId" ).
+                                    getValue() );
+                                if ( ! artifactsToExclude.contains( artifactId ) && childArtifact.getChild( "version" ).
                                     getValue().equalsIgnoreCase( oldVersion ) )
                                 {
-                                    artifactItems.getChild( i ).getChild( "version" ).setValue( newVersion );
+                                    childArtifact.getChild( "version" ).setValue( newVersion );
                                 }
                             }
                         }
@@ -313,6 +317,17 @@ public class ExternalVersionExtension
         }
     }
 
+    private String buildArtifactKey( MavenProject mavenProject )
+    {
+        return buildArtifactKey( mavenProject.getGroupId(), mavenProject.getArtifactId() );
+    }
+
+    private String buildArtifactKey( Dependency dependency )
+    {
+        return buildArtifactKey( dependency.getGroupId(), dependency.getArtifactId() );
+    }
+
+    
     private String buildGavKey( MavenProject mavenProject )
     {
         return buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(), mavenProject.getVersion() );
@@ -323,14 +338,14 @@ public class ExternalVersionExtension
         return buildGavKey( dependency.getGroupId(), dependency.getArtifactId(), dependency.getVersion() );
     }
 
-    private String buildGavKey( MavenProject mavenProject, String oldVersion )
+    private String buildArtifactKey( String groupId, String artifactId )
     {
-        return buildGavKey( mavenProject.getGroupId(), mavenProject.getArtifactId(), oldVersion );
+        return new StringBuilder( groupId ).append( ":" ).append( artifactId ).toString();
     }
-
+    
     private String buildGavKey( String groupId, String artifactId, String oldVersion )
     {
-        return new StringBuilder( groupId ).append( ":" ).append( artifactId ).append( ":" ).append(
+        return new StringBuilder( buildArtifactKey ( groupId, artifactId ) ).append( ":" ).append(
             oldVersion ).toString();
     }
 
@@ -347,7 +362,8 @@ public class ExternalVersionExtension
 
 
             // TODO: this needs to be restructured when other references are updated (dependencies, dep-management, plugins, etc)
-            if ( model.getParent() != null && ! artifactsToExclude.contains( model.getParent().getArtifactId() ) )
+            if ( model.getParent() != null && ! artifactsToExclude.contains( 
+                buildArtifactKey( model.getParent().getGroupId(), model.getParent().getArtifactId() ) ) )
             {
                  model.getParent().setVersion( mavenProject.getVersion() );
             }
