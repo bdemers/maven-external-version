@@ -93,7 +93,7 @@ public class ExternalVersionExtension
 
         Map<String, String> gavVersionMap = new HashMap<String, String>();
 
-        for ( MavenProject mavenProject : session.getAllProjects() )
+        for ( MavenProject mavenProject : session.getProjects() )
         {
             // Lookup this plugin's configuration
             Plugin plugin = mavenProject.getPlugin( "org.apache.maven.plugins:maven-external-version-plugin" );
@@ -143,7 +143,7 @@ public class ExternalVersionExtension
         // now we have only updated the versions of the projects, we need to update
         // the references between the updated projects
 
-        for ( MavenProject mavenProject : session.getAllProjects() )
+        for ( MavenProject mavenProject : session.getProjects() )
         {
             try
             {
