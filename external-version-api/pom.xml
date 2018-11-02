@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.maven.version</groupId>
         <artifactId>maven-external-version</artifactId>
-        <version>0.1.7</version>
+        <version>0.1.8-SNAPSHOT</version>
     </parent>
 
     <artifactId>external-version-api</artifactId>

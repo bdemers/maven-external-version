@@ -157,6 +157,7 @@ public class ExternalVersionExtension
                     updateInstallPlugin( mavenProject, oldVersion, newVersion );
                     updateDependencyPlugin( mavenProject, oldVersion, newVersion );
                     updateDeployPlugin( mavenProject, oldVersion, newVersion );
+                    updateNarPlugin( mavenProject, oldVersion, newVersion );
                     // TODO: get the unfiltered string, and re-filter it with new version.
                     String oldFinalName = mavenProject.getBuild().getFinalName();
                     String newFinalName = oldFinalName.replaceFirst( Pattern.quote( oldVersion ), newVersion );
@@ -221,6 +222,44 @@ public class ExternalVersionExtension
             }
         }
 
+    }
+
+    private void updateNarPlugin( MavenProject mavenProject, String oldVersion, String newVersion ) 
+    {
+        Plugin narPlugin = mavenProject.getPlugin( "org.apache.nifi:nifi-nar-maven-plugin" );
+        if ( null != narPlugin )
+        {
+            logger.info( "********  Handeling NAR Plugin*********" );
+            List<PluginExecution> executions = narPlugin.getExecutions();
+            for ( PluginExecution pluginExecution : executions ) 
+            {
+                if ( null != pluginExecution.getConfiguration() 
+                    && pluginExecution.getConfiguration() instanceof Xpp3Dom )
+                {
+                    Xpp3Dom dom = (Xpp3Dom) pluginExecution.getConfiguration();
+                    if ( null != dom.getChild( "version" ) )
+                    {
+                        if ( dom.getChild( "version" ).getValue().equalsIgnoreCase( oldVersion ) )
+                        {
+                            dom.getChild( "version" ).setValue( newVersion );
+                        }
+                    }
+                }
+            }
+            if ( null != narPlugin.getConfiguration() 
+                && narPlugin.getConfiguration() instanceof Xpp3Dom )
+            {
+                Xpp3Dom dom = (Xpp3Dom) narPlugin.getConfiguration();
+                if ( null != dom.getChild( "version" ) )
+                {
+                    if ( dom.getChild( "version" ).getValue().equalsIgnoreCase( oldVersion ) )
+                    {
+                        dom.getChild( "version" ).setValue( newVersion );
+                    }
+                }
+            }
+        }
+            
     }
 
     private void updateDependencyArtifacts( Map<String, String> gavVersionMap, MavenProject mavenProject, 
