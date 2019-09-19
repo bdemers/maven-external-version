@@ -22,6 +22,7 @@ package org.apache.maven.version;
 import org.apache.maven.AbstractMavenLifecycleParticipant;
 import org.apache.maven.MavenExecutionException;
 import org.apache.maven.artifact.ArtifactUtils;
+import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Plugin;
@@ -114,6 +115,8 @@ public class ExternalVersionExtension
                 // now that we have the new version update the project.
                 mavenProject.setVersion( newVersion );
                 mavenProject.getArtifact().setVersion( newVersion );
+                // MNG-6641: setVersion nullifies versionRange
+                mavenProject.getArtifact().setVersionRange( VersionRange.createFromVersion( newVersion ) );
 
                 // TODO: get the unfiltered string, and re-filter it with new version.
                 String oldFinalName = mavenProject.getBuild().getFinalName();
