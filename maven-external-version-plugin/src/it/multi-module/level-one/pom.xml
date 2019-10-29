@@ -7,15 +7,18 @@
     <artifactId>multi-module</artifactId>
     <version>1.0-SNAPSHOT</version>
   </parent>
-  <groupId>com.example</groupId>
   <artifactId>level-one</artifactId>
-  <version>1.0-SNAPSHOT</version>
   <name>level-one</name>
   <url>http://maven.apache.org</url>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
   <dependencies>
+    <dependency>
+      <groupId>com.example</groupId>
+      <artifactId>level-three</artifactId>
+      <version>${project.version}</version>
+    </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
