@@ -4,7 +4,7 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: maven-external-version
-  title: This is used for the backend builds
+  title: maven-external-version
   description: This is used for the backend builds
   annotations:
     github.com/project-slug: FirstFuel/maven-external-version
