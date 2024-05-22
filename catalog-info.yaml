@@ -8,6 +8,11 @@ metadata:
   description: This is used for the backend builds
   annotations:
     github.com/project-slug: FirstFuel/maven-external-version
+    lucid.app/arch-diagrams: N/A
+    uplightinc.atlassian.net/sli: N/A
+    uplightinc.atlassian.net/slo: N/A
+    uplightinc.atlassian.net/sla: N/A
+    snyk.io/org-id: N/A
   labels:
     tier: backend
     part-of: bcs
