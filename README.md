@@ -1,6 +1,14 @@
 Maven External Version
 -----------------------
 
+> [!NOTE]
+> This usecase is now part of Maven 4.  Please try Maven 4 and provide [feedback to the Maven team](https://maven.apache.org/mailing-lists.html)!
+>
+> [![The Current State of Apache Maven 4 - Karl Heinz Marbaise](https://img.youtube.com/vi/tAGv4QH29QU/0.jpg)](https://www.youtube.com/watch?v=tAGv4QH29QU&t=1112s)
+
+Archived Content
+---
+
 Requires Maven 3.2.0 or later.
 
 (github is the temporary home.)
